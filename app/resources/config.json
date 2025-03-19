@@ -1,0 +1,27 @@
+{
+    "gmail": {
+        "credentials_file": "app/resources/credentials.json",
+        "token_file": "app/resources/token.json",
+        "scan_interval": 300,
+        "resume_path": "app/resources/dummy_resume.txt",
+        "response_template": "Thank you for considering my application. I am interested in this opportunity and have attached my resume for your review.",
+        "criteria": {
+            "pay_range_min": 70000,
+            "employment_types": ["full-time", "contract"],
+            "excluded_companies": [],
+            "location_requirements": ["remote"]
+        }
+    },
+    "ziprecruiter": {
+        "api_key": "",
+        "search_interval": 3600,
+        "search_radius": 25,
+        "job_types": ["full-time"],
+        "keywords": ["python", "developer", "software engineer"],
+        "locations": ["remote"]
+    },
+    "ui": {
+        "start_minimized": false,
+        "show_notifications": true
+    }
+} 
