@@ -102,11 +102,22 @@ class GmailMonitor:
             try:
                 smtp_server = smtplib.SMTP('smtp.gmail.com', 587)
                 smtp_server.starttls()
+                
+                # Log authentication attempt
+                self.logger.info(f"Attempting SMTP login for {self.email}")
+                
+                # Try authentication - for Gmail this requires an app password if 2FA is enabled
+                # Regular password will not work with 2FA enabled
                 smtp_server.login(self.email, self.password)
                 smtp_server.quit()
                 self.logger.info("SMTP Authentication successful")
+            except smtplib.SMTPAuthenticationError as auth_err:
+                self.logger.error(f"SMTP Authentication failed: {auth_err}")
+                self.logger.info("If you have 2FA enabled on your Google account, please use an App Password instead of your regular password.")
+                self.logger.info("You can generate an App Password at: https://myaccount.google.com/apppasswords")
+                return False
             except Exception as e:
-                self.logger.error(f"SMTP Authentication failed: {e}")
+                self.logger.error(f"SMTP connection error: {e}")
                 return False
                 
             # For API-based operations, continue with the Google API flow
@@ -115,7 +126,7 @@ class GmailMonitor:
             token_file = self.gmail_config.get('token_file')
             
             # Initialize for API access as well if credentials file is available
-            if os.path.exists(credentials_file):
+            if credentials_file and os.path.exists(credentials_file):
                 self.logger.info("Setting up Gmail API access")
                 # This would be expanded in a production environment
             

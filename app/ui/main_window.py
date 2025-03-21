@@ -1,13 +1,13 @@
 import os
 import sys
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, 
     QPushButton, QLabel, QTextEdit, QTabWidget, 
     QGridLayout, QGroupBox, QCheckBox, QLineEdit, 
-    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu, QAction
+    QFileDialog, QMessageBox, QSystemTrayIcon, QMenu
 )
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt, QTimer
+from PySide6.QtGui import QIcon, QAction
+from PySide6.QtCore import Qt, QTimer
 
 class MainWindow(QMainWindow):
     """Main application window for the Job Assistant AI."""
@@ -127,6 +127,7 @@ class MainWindow(QMainWindow):
         self.start_email_btn.clicked.connect(self.start_email_monitoring)
         self.stop_email_btn.clicked.connect(self.stop_email_monitoring)
         self.exit_btn.clicked.connect(self.close_application)
+        self.settings_btn.clicked.connect(self.open_settings)
     
     def start_email_monitoring(self):
         """Start email monitoring service."""
@@ -166,6 +167,27 @@ class MainWindow(QMainWindow):
         self.showNormal()
         self.activateWindow()
         print("Window shown and activated!")
+
+    def open_settings(self):
+        """Open the settings dialog."""
+        try:
+            from app.ui.settings_dialog import SettingsDialog
+            dialog = SettingsDialog(self.config, self)
+            if dialog.exec_():
+                # If settings were accepted, update components with new config
+                self.logger.info("Settings updated")
+                
+                # Update Gmail monitor with new settings
+                self.gmail_monitor.email = self.config['gmail'].get('email')
+                self.gmail_monitor.password = self.config['gmail'].get('password')
+                
+                # Update ZipRecruiter client with new settings
+                self.ziprecruiter_client.email = self.config['ziprecruiter'].get('email')
+                self.ziprecruiter_client.password = self.config['ziprecruiter'].get('password')
+                
+        except Exception as e:
+            self.logger.error(f"Error opening settings: {e}")
+            print(f"Error opening settings: {e}")
 
 # This is only for testing the UI independently
 if __name__ == "__main__":
