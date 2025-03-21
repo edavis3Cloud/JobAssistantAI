@@ -6,6 +6,7 @@ import traceback
 from datetime import datetime
 import time
 from PyQt5.QtWidgets import QApplication
+from dotenv import load_dotenv
 
 # Import app components
 from app.core.gmail_monitor import GmailMonitor
@@ -15,6 +16,10 @@ from app.utils.logger import setup_logger
 
 def main():
     try:
+        # Load environment variables from .env file
+        dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+        load_dotenv(dotenv_path)
+        
         # Initialize QApplication first
         app = QApplication(sys.argv)
         
@@ -28,6 +33,15 @@ def main():
         with open(config_path, 'r') as f:
             config = json.load(f)
         
+        # Add environment variables to config
+        config['gmail']['email'] = os.getenv('GMAIL_EMAIL')
+        config['gmail']['password'] = os.getenv('GMAIL_PASSWORD')
+        config['gmail']['scan_interval'] = int(os.getenv('SCAN_INTERVAL', config['gmail'].get('scan_interval', 300)))
+        
+        config['ziprecruiter']['email'] = os.getenv('ZIPRECRUITER_EMAIL')
+        config['ziprecruiter']['password'] = os.getenv('ZIPRECRUITER_PASSWORD')
+        config['ziprecruiter']['search_interval'] = int(os.getenv('SEARCH_INTERVAL', config['ziprecruiter'].get('search_interval', 3600)))
+        
         # Set up logging
         log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
         logger = setup_logger('job_assistant', log_dir, logging.DEBUG)
@@ -40,7 +54,7 @@ def main():
         main_window = MainWindow(config, logger, gmail_monitor, ziprecruiter_client)
         
         # Start services
-        # gmail_monitor.start_monitoring()  # Commented out until credentials are setup
+        gmail_monitor.start_monitoring()  # Now with credentials, we can start monitoring
         
         # Always show the window
         print("Showing main application window...")

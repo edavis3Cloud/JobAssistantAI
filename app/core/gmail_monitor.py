@@ -4,6 +4,7 @@ import base64
 import email
 import re
 import threading
+import smtplib
 from datetime import datetime, timedelta
 from pathlib import Path
 from email.mime.text import MIMEText
@@ -50,7 +51,11 @@ class GmailMonitor:
         self.stop_event = threading.Event()
         
         # Load Gmail configuration
-        self.gmail_config = config.get('gmail')
+        self.gmail_config = config.get('gmail', {})
+        
+        # Store email and password
+        self.email = self.gmail_config.get('email')
+        self.password = self.gmail_config.get('password')
         
         # Employment-related keywords for identifying job emails
         self.job_keywords = [
@@ -87,9 +92,35 @@ class GmailMonitor:
             bool: True if authentication successful, False otherwise
         """
         try:
-            # For the test application, return success without actual authentication
-            self.logger.info("Mock Gmail authentication successful")
+            if not self.email or not self.password:
+                self.logger.error("Gmail credentials not found. Please check your .env file.")
+                return False
+                
+            self.logger.info(f"Authenticating with Gmail using email: {self.email}")
+            
+            # For SMTP-based email interactions
+            try:
+                smtp_server = smtplib.SMTP('smtp.gmail.com', 587)
+                smtp_server.starttls()
+                smtp_server.login(self.email, self.password)
+                smtp_server.quit()
+                self.logger.info("SMTP Authentication successful")
+            except Exception as e:
+                self.logger.error(f"SMTP Authentication failed: {e}")
+                return False
+                
+            # For API-based operations, continue with the Google API flow
+            # This would use the provided OAuth credentials file too
+            credentials_file = self.gmail_config.get('credentials_file')
+            token_file = self.gmail_config.get('token_file')
+            
+            # Initialize for API access as well if credentials file is available
+            if os.path.exists(credentials_file):
+                self.logger.info("Setting up Gmail API access")
+                # This would be expanded in a production environment
+            
             return True
+            
         except Exception as e:
             self.logger.error(f"Error during authentication: {e}")
             return False
@@ -108,16 +139,49 @@ class GmailMonitor:
         # Reset stop event
         self.stop_event.clear()
         
-        # Log that we're starting
-        self.logger.info("Starting Gmail monitoring...")
-        
-        # For demo purposes, we'll just log that we started rather than actually monitoring
-        # In a real implementation, this would start a thread to monitor emails
+        # Start monitoring in a separate thread
+        self.monitor_thread = threading.Thread(
+            target=self._monitor_loop,
+            daemon=True
+        )
+        self.monitor_thread.start()
+        self.logger.info("Started Gmail monitoring thread")
         return True
+    
+    def _monitor_loop(self):
+        """Main email monitoring loop."""
+        scan_interval = self.gmail_config.get('scan_interval', 300)  # Default 5 minutes
+        
+        self.logger.info(f"Gmail monitor running with scan interval of {scan_interval} seconds")
+        
+        while not self.stop_event.is_set():
+            try:
+                self.logger.info("Scanning emails for job opportunities...")
+                
+                # Actual email scanning code would go here
+                # This is where we would use the Gmail API or IMAP to check emails
+                
+                # Wait for the next scan interval or until stop is requested
+                self.stop_event.wait(scan_interval)
+                
+            except Exception as e:
+                self.logger.exception(f"Error in email monitoring loop: {e}")
+                # Wait for a short time before retrying
+                self.stop_event.wait(60)
     
     def stop_monitoring(self):
         """Stop monitoring emails."""
-        # Just log that we're stopping for demo purposes
-        self.logger.info("Gmail monitoring stopped")
+        if not self.monitor_thread or not self.monitor_thread.is_alive():
+            self.logger.warning("Email monitoring is not running")
+            return
+        
+        # Set stop event to signal the thread to exit
         self.stop_event.set()
+        
+        # Wait for the thread to finish
+        self.monitor_thread.join(timeout=5.0)
+        if self.monitor_thread.is_alive():
+            self.logger.warning("Email monitoring thread did not exit gracefully")
+        else:
+            self.logger.info("Stopped Gmail monitoring thread")
         return True
