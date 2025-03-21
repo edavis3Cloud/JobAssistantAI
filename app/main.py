@@ -1,58 +1,66 @@
-import os
 import sys
-import logging
-import json
-import traceback
-from datetime import datetime
-import time
-from PyQt5.QtWidgets import QApplication
+import os
+from pathlib import Path
 
-# Import app components
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
+from dotenv import load_dotenv
+
+from app.utils.config import Config
+from app.utils.logger import Logger
 from app.core.gmail_monitor import GmailMonitor
 from app.core.ziprecruiter_client import ZipRecruiterClient
 from app.ui.main_window import MainWindow
-from app.utils.logger import setup_logger
 
 def main():
-    try:
-        # Initialize QApplication first
-        app = QApplication(sys.argv)
-        
-        # Load configuration
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resources', 'config.json')
-        
-        if not os.path.exists(config_path):
-            print(f"Configuration file not found: {config_path}")
-            return 1
-        
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        
-        # Set up logging
-        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
-        logger = setup_logger('job_assistant', log_dir, logging.DEBUG)
-        
-        # Initialize core components
-        gmail_monitor = GmailMonitor(config, logger)
-        ziprecruiter_client = ZipRecruiterClient(config, logger)
-        
-        # Initialize main window
-        main_window = MainWindow(config, logger, gmail_monitor, ziprecruiter_client)
-        
-        # Start services
-        # gmail_monitor.start_monitoring()  # Commented out until credentials are setup
-        
-        # Always show the window
-        print("Showing main application window...")
+    """Main application entry point."""
+    # Load environment variables from .env file
+    root_dir = Path(__file__).parent.parent
+    dotenv_path = root_dir / '.env'
+    load_dotenv(dotenv_path)
+    
+    # Initialize application
+    app = QApplication(sys.argv)
+    app.setApplicationName("Job Assistant AI")
+    app.setOrganizationName("JobAssistantAI")
+    
+    # Set application style
+    app.setStyle("Fusion")
+    
+    # Load configuration
+    config = Config()
+    
+    # Initialize logger
+    logger = Logger(config)
+    log = logger.get_logger()
+    log.info("Starting Job Assistant AI application")
+    
+    # Initialize core components
+    gmail_monitor = GmailMonitor(config, logger)
+    ziprecruiter_client = ZipRecruiterClient(config, logger)
+    
+    # Initialize main window
+    main_window = MainWindow(config, logger, gmail_monitor, ziprecruiter_client)
+    
+    # When started from run_app.py, always show the main window
+    # Check the name of the script that started the application
+    if Path(sys.argv[0]).name == 'run_app.py':
         main_window.show()
-        
-        # Start the event loop to keep the application running
-        return app.exec_()
-        
-    except Exception as e:
-        print(f"Error in main: {str(e)}")
-        traceback.print_exc()
-        return 1
+    else:
+        # Use config setting only if not started from run_app.py
+        ui_config = config.get('ui', {})
+        if ui_config.get('startup_minimized', False):
+            main_window.hide()
+        else:
+            main_window.show()
+    
+    # Run application event loop
+    exit_code = app.exec()
+    
+    # Cleanup before exit
+    log.info("Shutting down Job Assistant AI application")
+    
+    return exit_code
 
 if __name__ == "__main__":
     sys.exit(main())

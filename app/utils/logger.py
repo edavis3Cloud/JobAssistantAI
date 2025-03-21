@@ -1,52 +1,82 @@
 import os
 import logging
-import sys
-from logging.handlers import RotatingFileHandler
-from datetime import datetime
+from pathlib import Path
+import datetime
 
-def setup_logger(name, log_dir, level=logging.INFO):
-    """
-    Set up a logger with console and file handlers.
+class Logger:
+    """Logging utility for the application."""
     
-    Args:
-        name: Logger name
-        log_dir: Directory to store log files
-        level: Logging level
+    def __init__(self, config):
+        """
+        Initialize the logger.
         
-    Returns:
-        logging.Logger: Configured logger
-    """
-    # Create logger
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+        Args:
+            config: Application configuration
+        """
+        self.config = config
+        self.logger = self._setup_logger()
+        
+    def _setup_logger(self):
+        """
+        Set up the logger.
+        
+        Returns:
+            logging.Logger: The configured logger
+        """
+        # Create logger
+        logger = logging.getLogger('job_assistant')
+        logger.setLevel(logging.DEBUG)
+        
+        # Create formatter
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        
+        # Create console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+        
+        # Create file handler
+        log_dir = Path(__file__).parent.parent.parent / 'logs'
+        os.makedirs(log_dir, exist_ok=True)
+        
+        today = datetime.datetime.now().strftime('%Y-%m-%d')
+        log_file = log_dir / f'job_assistant_{today}.log'
+        
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+        
+        return logger
     
-    # Remove any existing handlers
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
+    def get_logger(self):
+        """
+        Get the logger.
+        
+        Returns:
+            logging.Logger: The logger
+        """
+        return self.logger
     
-    # Create formatters
-    file_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_formatter = logging.Formatter(
-        '%(levelname)s: %(message)s')
+    def info(self, message):
+        """Log an info message."""
+        self.logger.info(message)
     
-    # Create console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(console_formatter)
-    console_handler.setLevel(level)
+    def error(self, message):
+        """Log an error message."""
+        self.logger.error(message)
     
-    # Create file handler
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    def warning(self, message):
+        """Log a warning message."""
+        self.logger.warning(message)
     
-    log_file = os.path.join(log_dir, f"{name}_{datetime.now().strftime('%Y%m%d')}.log")
-    file_handler = RotatingFileHandler(
-        log_file, maxBytes=10*1024*1024, backupCount=5)
-    file_handler.setFormatter(file_formatter)
-    file_handler.setLevel(level)
+    def debug(self, message):
+        """Log a debug message."""
+        self.logger.debug(message)
     
-    # Add handlers to logger
-    logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
-    
-    return logger
+    def exception(self, message):
+        """Log an exception message."""
+        self.logger.exception(message)
